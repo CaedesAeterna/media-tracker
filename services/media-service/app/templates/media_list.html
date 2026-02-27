@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Browse Media - Media Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Media Tracker</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link active" href="/media">Browse</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/library">My Library</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/friends">Friends</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    {% if username %}
+                        <li class="nav-item"><a class="nav-link" href="/profile">Hi, {{ username }}</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/auth/logout">Logout</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="/auth/login">Login</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Browse Catalog</h2>
+            <a href="/media/new" class="btn btn-outline-primary">+ Add New Title</a>
+        </div>
+
+        <form action="/media" method="GET" class="mb-4">
+            <div class="input-group">
+                <input type="text" id="mediaSearch" name="q" class="form-control" placeholder="Search by title (Press Enter for Server Search or type for Local Filter)..." value="{{ search_query if search_query else '' }}" onkeyup="filterMediaCards()">
+                <button class="btn btn-primary" type="submit">Search</button>
+                {% if search_query %}
+                    <a href="/media" class="btn btn-secondary">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+
+        {% if media_list|length == 0 %}
+            <div class="alert alert-info text-center">
+                No media found matching your search. <a href="/media/new">Add it now?</a>
+            </div>
+        {% endif %}
+
+        <div class="row row-cols-1 row-cols-md-3 g-4" id="mediaGrid">
+            {% for media in media_list %}
+            <div class="col media-card">
+                <div class="card h-100 shadow-sm">
+                    <!-- Placeholder Image for "Looks Better" -->
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span class="badge bg-light text-dark">{{ media.media_type }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ media.title }}</h5>
+                        <p class="card-text text-muted">{{ media.description }}</p>
+                    </div>
+                    <div class="card-footer bg-white border-top-0">
+                        {% if username %}
+                        <div class="d-grid gap-2">
+                            <!-- Add to Library (User Service) -->
+                            <form action="/library/add" method="POST">
+                                <input type="hidden" name="mediaId" value="{{ media.id }}">
+                                <input type="hidden" name="title" value="{{ media.title }}">
+                                <input type="hidden" name="mediaType" value="{{ media.media_type }}">
+                                <button type="submit" class="btn btn-primary w-100">Add to Library</button>
+                            </form>
+
+                            <hr class="my-1">
+
+                            {% if media.creator == username %}
+                            <div class="d-grid gap-1">
+                                <a href="/media/{{ media.id }}/edit" class="btn btn-sm btn-warning">Edit Details</a>
+
+                                <!-- Admin Actions (Restricted to Creator) -->
+                                <form action="/media/{{ media.id }}/release" method="POST">
+                                    {% if media.media_type in ['Series', 'Anime'] %}
+                                        <input type="hidden" name="season_number" value="2">
+                                        <input type="hidden" name="episode_number" value="5">
+                                        <input type="hidden" name="release_title" value="The Big Reveal">
+                                    {% elif media.media_type == 'Movie' %}
+                                        <input type="hidden" name="release_title" value="Theatrical Release">
+                                    {% elif media.media_type in ['Manga', 'Novel', 'Book', 'Web Novel'] %}
+                                        <input type="hidden" name="volume_number" value="1">
+                                        <input type="hidden" name="chapter_number" value="12">
+                                        <input type="hidden" name="release_title" value="Climax Chapter">
+                                    {% else %}
+                                        <input type="hidden" name="release_title" value="New Update">
+                                    {% endif %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success w-100">Simulate Release</button>
+                                </form>
+                                
+                                <form action="/media/{{ media.id }}/delete" method="POST" onsubmit="return confirm('Delete this media globally?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">Delete</button>
+                                </form>
+                            </div>
+                            {% else %}
+                                <div class="text-center text-muted small mt-2">
+                                    <small>Added by {{ media.creator if media.creator else 'System' }}</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="d-grid">
+                            <a href="/auth/login" class="btn btn-outline-primary">Login to Add</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function filterMediaCards() {
+            var input, filter, grid, cards, title, i, txtValue;
+            input = document.getElementById("mediaSearch");
+            filter = input.value.toUpperCase();
+            grid = document.getElementById("mediaGrid");
+            cards = grid.getElementsByClassName("media-card");
+
+            for (i = 0; i < cards.length; i++) {
+                title = cards[i].querySelector(".card-title");
+                if (title) {
+                    txtValue = title.textContent || title.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        cards[i].style.display = "";
+                    } else {
+                        cards[i].style.display = "none";
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %> - Media Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Media Tracker</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/media">Browse</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/library">My Library</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/friends">Friends</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/profile">Hi, <%= username %></a></li>
+                    <li class="nav-item"><a class="nav-link" href="/auth/logout">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>My Library</h1>
+            <div class="d-flex">
+                <input type="text" id="librarySearch" class="form-control me-3" placeholder="Filter my library..." onkeyup="filterLibrary()">
+                <a href="/library/history" class="btn btn-info text-white me-2" style="white-space: nowrap;">Global History</a>
+                <a href="/media" class="btn btn-success" style="white-space: nowrap;">+ Browse & Add Media</a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-striped table-hover mb-0" id="libraryTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Rating</th>
+                            <th>Review</th>
+                            <th>Update</th>
+                            <th>History</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% library.forEach(function(item) { 
+                           const formId = 'form-' + item.id;
+                        %>
+                            <tr>
+                                    <!-- Hidden Form ID for association -->
+                                    <input type="hidden" name="id" value="<%= item.id %>" form="<%= formId %>">
+                                    
+                                    <td class="align-middle fw-bold title-cell"><%= item.media_title %></td>
+                                    <td class="align-middle"><span class="badge bg-info text-dark"><%= item.media_type %></span></td>
+                                    <td>
+                                        <select name="status" class="form-select form-select-sm" form="<%= formId %>">
+                                            <option value="Plan to Watch" <%= item.status === 'Plan to Watch' ? 'selected' : '' %>>Plan to Watch</option>
+                                            <option value="Watching" <%= item.status === 'Watching' ? 'selected' : '' %>>Watching/Reading</option>
+                                            <option value="Completed" <%= item.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                                            <option value="Dropped" <%= item.status === 'Dropped' ? 'selected' : '' %>>Dropped</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <% if (item.media_type === 'Series' || item.media_type === 'Anime') { %>
+                                            <div class="d-flex flex-column gap-1">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text" style="width: 35px;">S</span>
+                                                    <input type="number" name="season" value="<%= item.current_season || 0 %>" class="form-control" form="<%= formId %>">
+                                                    <button type="submit" name="action" value="inc_season" class="btn btn-success fw-bold" title="+1 Season" form="<%= formId %>">+</button>
+                                                </div>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text" style="width: 35px;">E</span>
+                                                    <input type="number" name="episode" value="<%= item.current_episode || 0 %>" class="form-control" form="<%= formId %>">
+                                                    <button type="submit" name="action" value="inc_episode" class="btn btn-success fw-bold" title="+1 Episode" form="<%= formId %>">+</button>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" name="progress" value="S<%= item.current_season %> E<%= item.current_episode %>" form="<%= formId %>">
+                                        <% } else { %>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" name="progress" value="<%= item.progress %>" class="form-control" placeholder="Page 1 / Ch 5" form="<%= formId %>">
+                                                <button type="submit" name="action" value="inc_progress" class="btn btn-success fw-bold" title="+1 Chapter/Page" form="<%= formId %>">+</button>
+                                            </div>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <select name="rating" class="form-select form-select-sm" style="width: 70px;" form="<%= formId %>">
+                                            <option value="0" <%= !item.rating ? 'selected' : '' %>>-</option>
+                                            <% for(let i=1; i<=10; i++) { %>
+                                                <option value="<%= i %>" <%= item.rating == i ? 'selected' : '' %>><%= i %></option>
+                                            <% } %>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="openReviewModal('<%= item.id %>', `<%= (item.review_text || '').replace(/`/g, '\\`') %>`, '<%= item.watched_date ? new Date(item.watched_date).toISOString().split('T')[0] : '' %>', <%= item.is_rewatch %>, '<%= item.status %>', '<%= item.progress %>', '<%= item.rating %>', '<%= item.current_season %>', '<%= item.current_episode %>', '<%= item.media_type %>')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn btn-sm btn-primary" form="<%= formId %>">Save</button>
+                                    </td>
+                                    <td>
+                                        <a href="/library/history?title=<%= encodeURIComponent(item.media_title) %>" class="btn btn-sm btn-outline-secondary">Log</a>
+                                    </td>
+                                    <td>
+                                        <!-- Delete is tricky. It needs a different Action URL. 
+                                             We can use the same form but with a different formaction, OR a separate form.
+                                             Let's use a separate form for Delete to keep it clean, as it needs only ID.
+                                        -->
+                                        <form action="/library/delete" method="POST" style="display:inline;">
+                                            <input type="hidden" name="id" value="<%= item.id %>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to remove this item from your library?');" title="Remove">
+                                                &times;
+                                            </button>
+                                        </form>
+                                        
+                                        <!-- The Main Update Form -->
+                                        <form id="<%= formId %>" action="/library/update" method="POST" style="display:none;"></form>
+                                    </td>
+                            </tr>
+                        <% }); %>
+                        <% if (library.length === 0) { %>
+                            <tr>
+                                <td colspan="8" class="text-center p-5">
+                                    <p class="text-muted">Your library is empty.</p>
+                                    <a href="/media" class="btn btn-primary">Go Add Something!</a>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Review Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Review & Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/library/update" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="modalItemId">
+                        <!-- We need to preserve other fields like status/progress so the update doesn't wipe them. 
+                             However, our updateEntry is smart enough to just update what is sent IF we were selective, 
+                             but currently it expects everything. 
+                             
+                             WAIT: The updateEntry function expects all fields. If we send ONLY review from this modal, 
+                             status/progress/rating will be undefined in req.body and might overwrite DB with NULL or crash.
+                             
+                             FIX: We should either fetch the current state via AJAX or include all current values in the button's data attributes 
+                             and populate hidden fields here.
+                             
+                             For simplicity (MVP), let's assume this modal is ONLY for review/date/rewatch and the backend 
+                             handles undefined values gracefully OR we update the backend to valid partial updates.
+                             
+                             Checking backend:
+                             const res = await pool.query(query, [status, progress, rating...]);
+                             It USES the values passed.
+                             
+                             So we MUST pass existing values or change backend to COALESCE($1, current_value).
+                             
+                             Let's change backend logic? No, easier to just hide status/rating here and let user change them?
+                             OR: Let's make this modal purely for Review/Date and have the backend handle partials.
+                             
+                             Actually, let's look at my updated updateEntry:
+                             `UPDATE user_library SET status = $1 ...`
+                             It overwrites.
+                             
+                             QUICK FIX: The Review Modal will act as a "Detail Editor" and include Status/Rating too?
+                             That duplicates the row UI.
+                             
+                             Better: Let's update `services/user-service/models/library.js` to support partial updates using COALESCE.
+                             BUT I already edited it.
+                             
+                             Alternative:
+                             I will update the modal to include Status and Rating inputs too, making it a "Full Editor".
+                        -->
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Review / Notes</label>
+                            <textarea name="review" id="modalReview" class="form-control" rows="4" placeholder="Write your thoughts..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label" id="modalDateLabel">Date Finished</label>
+                            <input type="date" name="watched_date" id="modalDate" class="form-control">
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="is_rewatch" id="modalRewatch">
+                            <label class="form-check-label" for="modalRewatch" id="modalRewatchLabel">
+                                This is a Rewatch
+                            </label>
+                        </div>
+                        
+                        <!-- Hidden fields to prevent overwriting with nulls. -->
+                        <input type="hidden" name="status" id="modalStatus">
+                        <input type="hidden" name="progress" id="modalProgress">
+                        <input type="hidden" name="rating" id="modalRating">
+                        <input type="hidden" name="season" id="modalSeason">
+                        <input type="hidden" name="episode" id="modalEpisode">
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function filterLibrary() {
+            var input, filter, table, tr, td, i, txtValue;
+            input = document.getElementById("librarySearch");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("libraryTable");
+            tr = table.getElementsByTagName("tr");
+
+            for (i = 0; i < tr.length; i++) {
+                td = tr[i].getElementsByClassName("title-cell")[0];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function openReviewModal(id, review, date, rewatch, status, progress, rating, season, episode, type) {
+            document.getElementById('modalItemId').value = id;
+            document.getElementById('modalReview').value = review;
+            document.getElementById('modalDate').value = date;
+            document.getElementById('modalRewatch').checked = rewatch;
+            
+            // Dynamic Labels based on Type
+            const dateLabel = document.getElementById('modalDateLabel');
+            const rewatchLabel = document.getElementById('modalRewatchLabel');
+            const isReading = ['Book', 'Novel', 'Manga', 'Web Novel'].includes(type);
+
+            if (isReading) {
+                dateLabel.textContent = "Date Read";
+                rewatchLabel.textContent = "This is a Reread";
+            } else {
+                dateLabel.textContent = "Date Watched";
+                rewatchLabel.textContent = "This is a Rewatch";
+            }
+            
+            // Populate hidden fields to preserve state
+            document.getElementById('modalStatus').value = status;
+            document.getElementById('modalProgress').value = progress;
+            document.getElementById('modalRating').value = rating;
+            document.getElementById('modalSeason').value = season;
+            document.getElementById('modalEpisode').value = episode;
+            
+            var modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            modal.show();
+        }
+
+        // Auto-Save Feature
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('select[name="status"], select[name="rating"]');
+            
+            inputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    const formId = this.getAttribute('form');
+                    const form = document.getElementById(formId);
+                    
+                    if (!form) {
+                        console.error("Auto-save: Associated form not found for", this);
+                        return;
+                    }
+
+                    const formData = new FormData(form);
+                    const data = new URLSearchParams(formData);
+                    data.append('ajax', 'true');
+
+                    // Visual Feedback: Saving (Yellow Border)
+                    const originalBorder = this.style.borderColor;
+                    this.style.borderColor = '#ffc107'; 
+                    this.style.borderWidth = '2px';
+
+                    fetch('/library/update', {
+                        method: 'POST',
+                        body: data,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(res => {
+                        if (res.success) {
+                            // Success (Green)
+                            this.style.borderColor = '#198754';
+                            setTimeout(() => {
+                                this.style.borderColor = originalBorder;
+                                this.style.borderWidth = '';
+                            }, 1000);
+                        } else {
+                            // Error (Red)
+                            this.style.borderColor = '#dc3545';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Auto-save error:', err);
+                        this.style.borderColor = '#dc3545';
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

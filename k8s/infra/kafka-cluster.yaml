@@ -1,0 +1,60 @@
+# ------------------------------------------------------------
+# 1. The Kafka Cluster (The "Brains")
+#    Notice: No 'replicas' or 'storage' here. They are illegal in v1.
+# ------------------------------------------------------------
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: my-cluster
+  namespace: kafka
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 4.0.0  # Matches your operator's requirement
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+
+---
+
+# ------------------------------------------------------------
+# 2. The Node Pool (The "Body")
+#    This is where we define Size (replicas) and Disk (storage).
+# ------------------------------------------------------------
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: combined-nodes
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 3
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+    - id: 0
+      type: persistent-claim
+      size: 10Gi
+      class: do-block-storage
+      deleteClaim: false

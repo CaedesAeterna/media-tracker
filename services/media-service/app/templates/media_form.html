@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if media %}Edit Media{% else %}Add Media{% endif %} - Media Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-5">
+        <div class="container">
+            <a class="navbar-brand" href="/">Media Tracker</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h3 class="mb-0">{% if media %}Edit Media Details{% else %}Add New Media to Catalog{% endif %}</h3>
+                    </div>
+                    <div class="card-body">
+                        <form action="{% if media %}/media/{{ media.id }}/update{% else %}/media{% endif %}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Title</label>
+                                <input type="text" name="title" class="form-control" required placeholder="e.g. Breaking Bad" value="{{ media.title if media else '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <select name="media_type" id="media_type" class="form-select">
+                                    <option value="Anime" {% if media and media.media_type == 'Anime' %}selected{% endif %}>Anime</option>
+                                    <option value="Manga" {% if media and media.media_type == 'Manga' %}selected{% endif %}>Manga</option>
+                                    <option value="Web Novel" {% if media and media.media_type == 'Web Novel' %}selected{% endif %}>Web Novel</option>
+                                    <option value="Light Novel" {% if media and media.media_type == 'Light Novel' %}selected{% endif %}>Light Novel / Novel</option>
+                                    <option value="Book" {% if media and media.media_type == 'Book' %}selected{% endif %}>Book (Physical/General)</option>
+                                    <option value="Movie" {% if media and media.media_type == 'Movie' %}selected{% endif %}>Movie</option>
+                                    <option value="Series" {% if media and media.media_type == 'Series' %}selected{% endif %}>TV Series</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="3">{{ media.description if media and media.description else '' }}</textarea>
+                            </div>
+            
+                            <!-- Hidden Input to store the final JSON -->
+                            <input type="hidden" id="seasons_json" name="seasons_json">
+
+                            <div class="mb-3 p-3 border rounded bg-white" id="seasons-container" style="display:none;">
+                                <label class="form-label fw-bold">Series Structure</label>
+                                <div id="seasons-list">
+                                    <!-- Season Rows will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addSeason()">+ Add Season</button>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" onclick="prepareJson()">{% if media %}Update Media{% else %}Add Media{% endif %}</button>
+                            <a href="/media" class="btn btn-secondary">Cancel</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const typeSelect = document.getElementById('media_type');
+        const seasonsContainer = document.getElementById('seasons-container');
+        const seasonsList = document.getElementById('seasons-list');
+        const hiddenInput = document.getElementById('seasons_json');
+        
+        // Pass existing seasons from Jinja2 to JS
+        // safe filter is important to render raw JSON string
+        const existingSeasons = {% if seasons_json %}{{ seasons_json|safe }}{% else %}[]{% endif %};
+
+        let seasonCount = 0;
+
+        function toggleSeasons() {
+            if (typeSelect.value === 'Series' || typeSelect.value === 'Anime') {
+                seasonsContainer.style.display = 'block';
+                // Only auto-add if empty and we are creating new (not editing with existing data)
+                if (seasonCount === 0 && existingSeasons.length === 0) {
+                    addSeason(); 
+                }
+            } else {
+                seasonsContainer.style.display = 'none';
+            }
+        }
+
+        function addSeason(initialData = null) {
+            seasonCount++;
+            const currentSeasonNum = initialData ? initialData.season_number : seasonCount;
+            // If loading existing data, respect the max season number
+            if (currentSeasonNum > seasonCount) seasonCount = currentSeasonNum;
+
+            const epCount = initialData ? (initialData.episodes ? initialData.episodes.length : 0) : 0;
+
+            const div = document.createElement('div');
+            div.className = 'mb-2 p-2 border-bottom season-row';
+            div.dataset.season = currentSeasonNum;
+            div.innerHTML = `
+                <div class="d-flex align-items-center mb-1">
+                    <span class="fw-bold me-2">Season ${currentSeasonNum}</span>
+                    <input type="number" class="form-control form-control-sm me-2" placeholder="Episode Count" style="width: 150px;" id="s${currentSeasonNum}_episodes" value="${epCount > 0 ? epCount : ''}">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSeason(this)">Remove</button>
+                </div>
+            `;
+            seasonsList.appendChild(div);
+        }
+
+        function removeSeason(btn) {
+            btn.closest('.season-row').remove();
+        }
+
+        function prepareJson() {
+            if (seasonsContainer.style.display === 'none') {
+                hiddenInput.value = "";
+                return;
+            }
+
+            const data = [];
+            const rows = document.querySelectorAll('.season-row');
+            
+            rows.forEach(row => {
+                const sNum = parseInt(row.dataset.season);
+                const epCount = parseInt(row.querySelector('input[type="number"]').value) || 0;
+                
+                // Generate episode objects
+                const episodes = [];
+                for (let i = 1; i <= epCount; i++) {
+                    episodes.push({ "episode_number": i, "title": "Episode " + i });
+                }
+
+                data.push({
+                    "season_number": sNum,
+                    "episodes": episodes
+                });
+            });
+
+            hiddenInput.value = JSON.stringify(data);
+        }
+
+        // Initialize Form
+        typeSelect.addEventListener('change', toggleSeasons);
+        
+        // Load existing seasons if any
+        if (existingSeasons.length > 0) {
+            existingSeasons.forEach(s => addSeason(s));
+            // Ensure container is shown if we have seasons, even if type matches
+            if (typeSelect.value === 'Series' || typeSelect.value === 'Anime') {
+                seasonsContainer.style.display = 'block';
+            }
+        } else {
+            toggleSeasons(); // Initial check for new items
+        }
+
+    </script>
+</body>
+</html>

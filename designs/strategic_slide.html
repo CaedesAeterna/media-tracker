@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Strategic Design Slide</title>
+    <!-- Load Viz.js and its renderer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+    <style>
+        body { 
+            background-color: #0f0f12; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow: hidden; 
+        }
+        h1 { 
+            font-size: 3rem; 
+            margin-bottom: 20px; 
+            text-transform: uppercase; 
+            letter-spacing: 4px; 
+            background: linear-gradient(45deg, #7c3aed, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #graph {
+            width: 90vw;
+            height: 80vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(20, 20, 30, 0.5);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Strategic Design: Context Map</h1>
+    <div id="graph"></div>
+
+    <script>
+        const dot = `
+digraph G {
+  bgcolor="transparent";
+  fontname="Segoe UI";
+  rankdir=TB;
+  nodesep=1.0;
+  ranksep=1.5;
+
+  node [fontname="Segoe UI", shape=box, style="filled,rounded", color=none, fontcolor=white, margin=0.3, fontsize=16];
+  edge [fontname="Segoe UI", color="#888888", fontcolor="#aaaaaa", fontsize=12, arrowhead=vee];
+
+  subgraph cluster_0 {
+    label = "Generic Subdomain";
+    style=dashed; color="#4b5563"; fontcolor="#9ca3af";
+    
+    UserContext [label="User Context\n(Identity & Access)", fillcolor="#374151"];
+    NotifContext [label="Notification Context\n(Delivery)", fillcolor="#374151"];
+  }
+
+  subgraph cluster_1 {
+    label = "Supporting Subdomain";
+    style=dashed; color="#3b82f6"; fontcolor="#60a5fa";
+    
+    MediaContext [label="Media Catalog Context\n(Global Metadata)", fillcolor="#1e40af"];
+  }
+
+  subgraph cluster_2 {
+    label = "Core Domain";
+    style=solid; color="#10b981"; fontcolor="#34d399"; penwidth=3;
+    
+    LibContext [label="Library & Tracking Context\n(Business Logic)", fillcolor="#047857"];
+  }
+
+  // Relationships
+  UserContext -> LibContext [label="Customer/Supplier"];
+  
+  MediaContext -> LibContext [label="Upstream (Producer)"];
+  MediaContext -> NotifContext [label="Upstream (Producer)"];
+  LibContext -> NotifContext [label="Upstream (Producer)"];
+}
+`;
+        var viz = new Viz();
+        
+        viz.renderSVGElement(dot)
+            .then(function(element) {
+                document.getElementById("graph").appendChild(element);
+            })
+            .catch(error => {
+                console.error(error);
+                document.getElementById("graph").innerHTML = "<p style='color:red'>Error rendering graph. Please check internet connection for CDN.</p>";
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+jinja2
+httpx
+python-multipart
+aiokafka
+protobuf==4.25.1

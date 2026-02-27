@@ -1,0 +1,16 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+
+
+
+idea*
+PROJECT*
+PRESENTATION*
+generate_ppt.py
+handout
+
+.venv/
+*.odp

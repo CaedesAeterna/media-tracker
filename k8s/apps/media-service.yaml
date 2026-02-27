@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-service
+  template:
+    metadata:
+      labels:
+        app: media-service
+    spec:
+      containers:
+      - name: media-service
+        image: media-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: MONGO_URL
+          value: "mongodb://mongo-0.mongo.database.svc.cluster.local:27017,mongo-1.mongo.database.svc.cluster.local:27017,mongo-2.mongo.database.svc.cluster.local:27017/?replicaSet=rs0"
+        - name: KAFKA_BROKER
+          value: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-service
+  namespace: app
+spec:
+  selector:
+    app: media-service
+  ports:
+  - port: 80
+    targetPort: 8000

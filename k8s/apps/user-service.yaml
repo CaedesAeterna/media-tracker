@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: user-service:v2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_HOST
+          value: "postgres-rw.database.svc.cluster.local"
+        - name: DB_USER
+          value: "admin"
+          # ... (truncated for brevity)
+        - name: DB_NAME
+          value: "users_db"
+        - name: KAFKA_BROKER
+          value: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        - name: REDIS_HOST
+          value: "redis.database.svc.cluster.local"
+        - name: REDIS_PORT
+          value: "6379"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: app
+spec:
+  selector:
+    app: user-service
+  ports:
+  - port: 80
+    targetPort: 3000

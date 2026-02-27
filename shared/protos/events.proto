@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package events;
+
+message UserRegistered {
+  string user_id = 1;
+  string username = 2;
+  string email = 3; // Optional, adding for future proofing
+  int64 timestamp = 4;
+}
+
+message MediaUpdate {
+  string event_type = 1; // "new_release", "media_deleted"
+  string media_id = 2;
+  string media_title = 3;
+  string media_type = 4; // "tv", "movie", "manga"
+  string release_title = 5;
+  int32 season = 6;
+  int32 episode = 7;
+  int32 volume = 8;
+  int32 chapter = 9;
+  int64 timestamp = 10;
+}
